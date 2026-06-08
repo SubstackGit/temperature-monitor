@@ -19,7 +19,7 @@ struct ContentView: View {
         let presets: [(icon: String, label: String, temp: Double)]
     }
     
-    let categories: [PresetCategory] = [
+    let leftCategories: [PresetCategory] = [
         PresetCategory(title: "Common", presets: [
             ("🏠", "Room", 20.0),
             ("☕", "Coffee", 60.0),
@@ -29,7 +29,10 @@ struct ContentView: View {
             ("❄️", "Cold", 10.0),
             ("☀️", "Warm", 30.0),
             ("🌊", "Water", 40.0)
-        ]),
+        ])
+    ]
+    
+    let rightCategories: [PresetCategory] = [
         PresetCategory(title: "Health", presets: [
             ("🧊", "Cool Bath", 25.0),
             ("🤒", "Body Temp", 37.0),
@@ -48,47 +51,63 @@ struct ContentView: View {
     ]
     
     var body: some View {
-        HStack(spacing: 20) {
-            // LEFT COLUMN: First 2 categories
-            VStack(alignment: .leading, spacing: 12) {
+        HStack(spacing: 12) {
+            // LEFT COLUMN
+            VStack(alignment: .leading, spacing: 4) {
                 Text("Temperature")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.white)
                 
-                ForEach(categories[0...1], id: \.title) { category in
-                    PresetGrid(category: category, action: { moveSlider(to: $0) })
+                Spacer().frame(height: 6)
+                
+                // SLIDER: Moved UP (Higher than icons now)
+                // Aligns roughly with ~40-45°C visually
+                VStack(spacing: 4) {
+                    Slider(value: $sliderValue, in: minTemp...maxTemp, step: 0.5)
+                        .tint(.red)
+                        .frame(width: 100) // Widened
+                    
+                    Text("\(String(format: "%.0f", currentCelsius))°C")
+                        .font(.caption2)
+                        .foregroundColor(.red)
+                    
+                    Text("\(String(format: "%.0f", currentFahrenheit))°F")
+                        .font(.caption2)
+                        .foregroundColor(.blue)
                 }
+                
+                Spacer().frame(height: 18) // Gap between slider and icons (pushes icons down)
+                
+                // LEFT PRESETS: Common & Weather (Pushed Down)
+                ForEach(leftCategories, id: \.title) { category in
+                    CompactPresetGrid(category: category, action: { moveSlider(to: $0) })
+                    if category.title != "Weather" { Spacer().frame(height: 4) }
+                }
+                
+                Spacer() // Fill remaining space at bottom
             }
             
             // CENTER: Thermometer
-            VStack(spacing: 8) {
-                Text("Monitor")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(.white)
-                
-                ThermometerCanvas(fillPct: fillPct, minTemp: minTemp, maxTemp: maxTemp)
-                    .frame(height: 430)
-                
-                Slider(value: $sliderValue, in: minTemp...maxTemp, step: 0.5)
-                    .tint(.red)
-                
-                Text("\(String(format: "%.1f", currentCelsius))°C / \(String(format: "%.1f", currentFahrenheit))°F")
-                    .font(.caption)
-                    .foregroundColor(.gray)
-            }
-            .padding(.vertical, 10)
+            ThermometerCanvas(fillPct: fillPct, minTemp: minTemp, maxTemp: maxTemp)
+                .frame(width: 100, height: 360)
             
-            // RIGHT COLUMN: Last 3 categories
-            VStack(alignment: .leading, spacing: 12) {
-                ForEach(categories[2...4], id: \.title) { category in
-                    PresetGrid(category: category, action: { moveSlider(to: $0) })
+            // RIGHT COLUMN
+            VStack(alignment: .leading, spacing: 4) {
+                Spacer().frame(height: 18) // Match left side gap
+                
+                // RIGHT PRESETS: Health, Cooking, Aquarium (Pushed Down to match Left)
+                ForEach(rightCategories, id: \.title) { category in
+                    CompactPresetGrid(category: category, action: { moveSlider(to: $0) })
+                    if category.title != "Aquarium" { Spacer().frame(height: 4) }
                 }
+                
+                Spacer() // Fill remaining space
             }
         }
-        .padding(20)
+        .padding(12)
         .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(16)
-        .frame(width: 550, height: 650) // WIDER window for side columns
+        .cornerRadius(12)
+        .frame(width: 380, height: 430)
     }
     
     func moveSlider(to value: Double) {
@@ -98,32 +117,25 @@ struct ContentView: View {
     }
 }
 
-// MARK: - Preset Grid Component (Compact horizontal row per category)
-struct PresetGrid: View {
+// MARK: - Compact Preset Grid
+struct CompactPresetGrid: View {
     let category: ContentView.PresetCategory
     let action: (Double) -> Void
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 4) {
             Text(category.title)
-                .font(.caption2)
+                .font(.system(size: 9, weight: .medium))
                 .foregroundColor(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
             
-            HStack(spacing: 8) {
+            HStack(spacing: 4) {
                 ForEach(category.presets, id: \.temp) { preset in
                     Button(action: { action(preset.temp) }) {
-                        VStack(spacing: 2) {
-                            Text(preset.icon).font(.system(size: 16))
-                            Text(String(format: "%.0f°", preset.temp)).font(.system(size: 9, weight: .medium))
-                        }
-                        .frame(width: 50, height: 45)
-                        .background(Color.gray.opacity(0.15))
-                        .cornerRadius(8)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                        )
+                        Text(preset.icon)
+                            .font(.system(size: 14))
+                            .frame(width: 28, height: 28)
+                            .background(Color.gray.opacity(0.15))
+                            .cornerRadius(6)
                     }
                     .buttonStyle(.plain)
                 }
@@ -132,7 +144,7 @@ struct PresetGrid: View {
     }
 }
 
-// MARK: - Thermometer Canvas Component
+// MARK: - Thermometer Canvas Component (Safe Bulb)
 struct ThermometerCanvas: View {
     let fillPct: CGFloat
     let minTemp: Double
@@ -140,13 +152,15 @@ struct ThermometerCanvas: View {
     
     var body: some View {
         Canvas { context, size in
-            let tubeWidth: CGFloat = 24
-            let tubeHeight: CGFloat = size.height - 60
+            let tubeWidth: CGFloat = 16
+            let tubeHeight: CGFloat = size.height - 45
             let tubeTop: CGFloat = 10
             let tubeBottom = tubeTop + tubeHeight
             let centerX = size.width / 2
-            let bulbRadius: CGFloat = 22
-            let bulbCenterY = tubeBottom + bulbRadius + 5
+            
+            // Bulb: Radius 10, fully visible
+            let bulbRadius: CGFloat = 10
+            let bulbCenterY = tubeBottom + bulbRadius + 1
             
             // Bulb
             let bulbRect = CGRect(x: centerX - bulbRadius, y: bulbCenterY - bulbRadius, width: bulbRadius * 2, height: bulbRadius * 2)
@@ -165,37 +179,36 @@ struct ThermometerCanvas: View {
                 context.fill(Path(roundedRect: mercuryRect, cornerRadius: 4), with: .linearGradient(Gradient(colors: [.orange, .red]), startPoint: CGPoint(x: centerX, y: tubeBottom - mercuryHeight), endPoint: CGPoint(x: centerX, y: tubeBottom)))
             }
             
-            // Ticks & Labels
-            for intC in Int(minTemp)...Int(maxTemp) {
+            // Ticks & Labels (Every 5 degrees)
+            let step = 5
+            for intC in stride(from: Int(minTemp), through: Int(maxTemp), by: step) {
                 let celsius = Double(intC)
                 let pct = (celsius - minTemp) / (maxTemp - minTemp)
                 let tickY = tubeBottom - CGFloat(pct * Double(tubeHeight))
                 
-                let isMajor = intC % 5 == 0
-                let tickLength: CGFloat = isMajor ? 12 : 7
-                let tickWidth: CGFloat = isMajor ? 1.5 : 1.0
+                let tickLength: CGFloat = 10
+                let tickWidth: CGFloat = 1.5
                 
                 // Left Tick (Fahrenheit)
                 var pathLeft = Path()
                 pathLeft.move(to: CGPoint(x: centerX - tubeWidth/2, y: tickY))
                 pathLeft.addLine(to: CGPoint(x: centerX - tubeWidth/2 - tickLength, y: tickY))
-                context.stroke(pathLeft, with: .color(.gray.opacity(isMajor ? 1 : 0.6)), lineWidth: tickWidth)
+                context.stroke(pathLeft, with: .color(.gray), lineWidth: tickWidth)
                 
                 // Right Tick (Celsius)
                 var pathRight = Path()
                 pathRight.move(to: CGPoint(x: centerX + tubeWidth/2, y: tickY))
                 pathRight.addLine(to: CGPoint(x: centerX + tubeWidth/2 + tickLength, y: tickY))
-                context.stroke(pathRight, with: .color(.gray.opacity(isMajor ? 1 : 0.6)), lineWidth: tickWidth)
+                context.stroke(pathRight, with: .color(.gray), lineWidth: tickWidth)
                 
-                if isMajor {
-                    let fahr = (celsius * 9/5) + 32
-                    
-                    let fLabel = "\(Int(fahr))°F"
-                    context.draw(Text(fLabel).font(.system(size: 9)).foregroundColor(.blue), at: CGPoint(x: centerX - tubeWidth/2 - tickLength - 4, y: tickY), anchor: .trailing)
-                    
-                    let cLabel = "\(intC)°C"
-                    context.draw(Text(cLabel).font(.system(size: 9)).foregroundColor(.red), at: CGPoint(x: centerX + tubeWidth/2 + tickLength + 4, y: tickY), anchor: .leading)
-                }
+                // Labels
+                let fahr = (celsius * 9/5) + 32
+                
+                let fLabel = "\(Int(fahr))°"
+                context.draw(Text(fLabel).font(.system(size: 7)).foregroundColor(.blue), at: CGPoint(x: centerX - tubeWidth/2 - tickLength - 2, y: tickY), anchor: .trailing)
+                
+                let cLabel = "\(intC)°"
+                context.draw(Text(cLabel).font(.system(size: 7)).foregroundColor(.red), at: CGPoint(x: centerX + tubeWidth/2 + tickLength + 2, y: tickY), anchor: .leading)
             }
         }
     }
